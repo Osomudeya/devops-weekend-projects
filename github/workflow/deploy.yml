@@ -1,0 +1,63 @@
+# .github/workflows/deploy.yml
+name: Deploy Website
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Validate HTML
+      run: |
+        # Install HTML validator
+        sudo apt-get update
+        sudo apt-get install -y tidy
+        
+        # Check HTML files for basic syntax errors
+        for file in *.html; do
+          echo "Validating $file"
+          tidy -q -e "$file" || echo "Warning: $file has validation issues"
+        done
+    
+    - name: Check CSS
+      run: |
+        # Basic CSS validation
+        echo "Checking CSS syntax..."
+        if grep -q "}" *.css && grep -q "{" *.css; then
+          echo "CSS files appear to have basic structure"
+        else
+          echo "CSS files may have syntax issues"
+          exit 1
+        fi
+    
+    - name: Test JavaScript
+      run: |
+        # Basic JS syntax check
+        node -c script.js
+        echo "JavaScript syntax check passed"
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./
+        
+    - name: Deploy Notification
+      run: |
+        echo "🚀 Deployment completed successfully!"
+        echo "Site should be live at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
